@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="live-container">
+    <h1>Live Sign Detection</h1>
+    <p>Real-time ASL Alphabet Recognition</p>
+
+    <div class="camera-wrapper">
+        <img src="{{ url_for('video') }}">
+    </div>
+</div>
+
+{% endblock %}

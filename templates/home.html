@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="hero">
+    <div class="hero-text">
+        <h1>Turning Gestures into Meaning.</h1>
+        <p>
+            Gestura enables real-time American Sign Language recognition,
+            helping bridge communication gaps.
+        </p>
+        <a href="/live" class="btn-primary">Start Live Detection</a>
+    </div>
+
+    <div class="hero-image">
+        <img src="{{ url_for('static', filename='images/hero.png') }}">
+    </div>
+</div>
+
+{% endblock %}
