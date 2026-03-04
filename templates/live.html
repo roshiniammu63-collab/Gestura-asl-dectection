@@ -1,14 +1,117 @@
 {% extends "base.html" %}
-
 {% block content %}
 
 <div class="live-container">
+
     <h1>Live Sign Detection</h1>
-    <p>Real-time ASL Alphabet Recognition</p>
 
     <div class="camera-wrapper">
-        <img src="{{ url_for('video') }}">
+
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+
+        <div class="focus-box"></div>
+
     </div>
+
+    <h2 id="prediction">Prediction: --</h2>
+
 </div>
+
+
+<script>
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const predictionText = document.getElementById("prediction");
+
+
+/* START CAMERA */
+
+async function startCamera() {
+
+    try {
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+        });
+
+        video.srcObject = stream;
+
+    } catch (error) {
+
+        console.error("Camera error:", error);
+        predictionText.innerText = "Prediction: Camera error";
+
+    }
+
+}
+
+startCamera();
+
+
+/* PREDICTION LOOP */
+
+setInterval(() => {
+
+    if (!video.videoWidth) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.drawImage(video, 0, 0, width, height);
+
+    /* Crop center box */
+
+    const boxSize = 300;
+
+    const startX = width/2 - boxSize/2;
+    const startY = height/2 - boxSize/2;
+
+    const imageData = ctx.getImageData(startX, startY, boxSize, boxSize);
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = boxSize;
+    tempCanvas.height = boxSize;
+
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.putImageData(imageData, 0, 0);
+
+    const croppedImage = tempCanvas.toDataURL("image/jpeg");
+
+
+    fetch("/predict", {
+
+        method: "POST",
+
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({ image: croppedImage })
+
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        predictionText.innerText = "Prediction: " + data.prediction;
+
+    })
+    .catch(err => {
+
+        console.error("Prediction error:", err);
+
+    });
+
+}, 800);
+
+
+</script>
 
 {% endblock %}
