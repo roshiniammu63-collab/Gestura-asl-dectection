@@ -23,21 +23,20 @@ async function startCamera(){
 
     try{
 
-        // force browser to pick default webcam
         const stream = await navigator.mediaDevices.getUserMedia({
-            video:{
-                width:640,
-                height:480
-            },
+            video:true,
             audio:false
         });
 
         video.srcObject = stream;
-        await video.play();
 
-        result.innerText = "Waiting...";
+        // START ONLY AFTER VIDEO LOADS
+        video.onloadeddata = () => {
 
-        setTimeout(detect,500);
+            result.innerText = "Waiting...";
+            detect();
+
+        };
 
     }catch(err){
 
@@ -53,45 +52,38 @@ startCamera();
 
 function detect(){
 
-    if(!video.videoWidth){
-        setTimeout(detect,500);
-        return;
-    }
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // mirror webcam
     ctx.save();
     ctx.scale(-1,1);
     ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
     ctx.restore();
 
     const boxSize = 250;
+
     const x = canvas.width/2 - boxSize/2;
     const y = canvas.height/2 - boxSize/2;
 
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle="black";
+    ctx.lineWidth=4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
-    // crop ROI
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = boxSize;
-    tempCanvas.height = boxSize;
+    const tempCanvas=document.createElement("canvas");
+    tempCanvas.width=boxSize;
+    tempCanvas.height=boxSize;
 
-    const tempCtx = tempCanvas.getContext("2d");
+    const tempCtx=tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    // resize for model
-    const resizeCanvas = document.createElement("canvas");
-    resizeCanvas.width = 128;
-    resizeCanvas.height = 128;
+    const resizeCanvas=document.createElement("canvas");
+    resizeCanvas.width=128;
+    resizeCanvas.height=128;
 
-    const resizeCtx = resizeCanvas.getContext("2d");
+    const resizeCtx=resizeCanvas.getContext("2d");
     resizeCtx.drawImage(tempCanvas,0,0,128,128);
 
-    const image = resizeCanvas.toDataURL("image/jpeg");
+    const image=resizeCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
@@ -102,7 +94,7 @@ function detect(){
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText = data.prediction;
+        result.innerText=data.prediction;
     })
     .catch(()=>{
         result.innerText="Prediction Error";
