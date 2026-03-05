@@ -19,58 +19,70 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const result = document.getElementById("result");
 
-navigator.mediaDevices.getUserMedia({ video:true })
-.then(stream=>{
-    video.srcObject = stream;
-})
-.catch(err=>{
-    console.error(err);
-    result.innerText="Camera Error: " + err.message;
-});
+async function startCamera(){
+    try{
 
-video.addEventListener("loadeddata", ()=>{
-    detect();
-});
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video:{ facingMode:"user" },
+            audio:false
+        });
+
+        video.srcObject = stream;
+
+        video.onloadedmetadata = ()=>{
+            video.play();
+            detect();
+        };
+
+    }catch(err){
+
+        console.error(err);
+        result.innerText = "Camera Error";
+
+    }
+}
+
+startCamera();
+
 
 function detect(){
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // mirror webcam
+    // mirror camera
     ctx.save();
     ctx.scale(-1,1);
     ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
     ctx.restore();
 
-    // ROI BOX SIZE (large for hand focus)
     const boxSize = 250;
 
     const x = canvas.width/2 - boxSize/2;
     const y = canvas.height/2 - boxSize/2;
 
-    // draw black ROI box
-    ctx.strokeStyle="black";
-    ctx.lineWidth=4;
+    // draw ROI box
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
     // crop ROI
-    const tempCanvas=document.createElement("canvas");
-    tempCanvas.width=boxSize;
-    tempCanvas.height=boxSize;
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = boxSize;
+    tempCanvas.height = boxSize;
 
-    const tempCtx=tempCanvas.getContext("2d");
+    const tempCtx = tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    // resize ROI → model size
-    const resizeCanvas=document.createElement("canvas");
-    resizeCanvas.width=128;
-    resizeCanvas.height=128;
+    // resize ROI to model size
+    const resizeCanvas = document.createElement("canvas");
+    resizeCanvas.width = 128;
+    resizeCanvas.height = 128;
 
-    const resizeCtx=resizeCanvas.getContext("2d");
+    const resizeCtx = resizeCanvas.getContext("2d");
     resizeCtx.drawImage(tempCanvas,0,0,128,128);
 
-    const image=resizeCanvas.toDataURL("image/jpeg");
+    const image = resizeCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
@@ -81,10 +93,10 @@ function detect(){
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText=data.prediction;
+        result.innerText = data.prediction;
     })
     .catch(()=>{
-        result.innerText="Error";
+        result.innerText="Prediction Error";
     });
 
     setTimeout(detect,500);
