@@ -7,7 +7,14 @@ from keras.models import load_model
 app = Flask(__name__)
 
 # Load trained ASL model
-model = load_model("asl_model_final.keras", compile=False)
+model = None
+
+def get_model():
+    global model
+    if model is None:
+        from keras.models import load_model
+        model = load_model("asl_model_final.keras", compile=False)
+    return model
 
 # Alphabet labels
 labels = [
@@ -62,7 +69,7 @@ def predict():
     # Expand dimensions
     img = np.expand_dims(img, axis=0) 
 
-    prediction = model.predict(img)
+    prediction = get_model().predict(img)
 
     confidence = np.max(prediction)
 
