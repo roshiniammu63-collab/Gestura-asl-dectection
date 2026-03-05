@@ -49,18 +49,18 @@ def predict():
         np_arr = np.frombuffer(img_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        img = cv2.resize(img, (128,128))
-        img = img / 255.0
-        img = np.expand_dims(img, axis=0)
+        img = cv2.resize(img,(128,128))
+        img = img.astype("float32") / 255.0
+        img = np.expand_dims(img,axis=0)
 
-        prediction = get_model().predict(img)
-
-        label = labels[np.argmax(prediction)]
+        prediction = get_model().predict(img, verbose=0)
+        label = labels[int(np.argmax(prediction))]
 
         return jsonify({"prediction": label})
 
     except Exception as e:
-        return jsonify({"prediction": "Error"})
+        print("Prediction error:", e)
+    return jsonify({"prediction": "Error"})
     
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@
 
 <div style="display:flex; justify-content:center;">
     <canvas id="canvas" style="border:4px solid black; border-radius:20px;"></canvas>
-    <video id="video" autoplay playsinline style="display:none;"></video>
+    <video id="video" autoplay playsinline muted style="display:none;"></video>
 </div>
 
 <h2 style="text-align:center;">
@@ -24,7 +24,8 @@ navigator.mediaDevices.getUserMedia({ video:true })
     video.srcObject = stream;
 })
 .catch(err=>{
-    result.innerText="Camera Error";
+    console.error(err);
+    result.innerText="Camera Error: " + err.message;
 });
 
 video.addEventListener("loadeddata", ()=>{
