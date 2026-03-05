@@ -2,12 +2,12 @@ from flask import Flask, render_template, request, jsonify
 import numpy as np
 import base64
 import cv2
-from tensorflow.keras.models import load_model
+from keras.models import load_model
 
 app = Flask(__name__)
 
 # Load trained ASL model
-model = load_model("asl_model_final.keras")
+model = load_model("asl_model_final.keras", compile=False)
 
 # Alphabet labels
 labels = [
