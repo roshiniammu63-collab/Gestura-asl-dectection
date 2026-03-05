@@ -19,43 +19,49 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const result = document.getElementById("result");
 
-let stream = null;
-
 async function startCamera(){
+
     try{
 
-        stream = await navigator.mediaDevices.getUserMedia({
-            video:true,
+        // force browser to pick default webcam
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video:{
+                width:640,
+                height:480
+            },
             audio:false
         });
 
         video.srcObject = stream;
         await video.play();
 
-        result.innerText = "Detecting...";
-        detectLoop();
+        result.innerText = "Waiting...";
+
+        setTimeout(detect,500);
 
     }catch(err){
 
         console.error(err);
-        result.innerText = "Camera Permission Denied";
+        result.innerText = "Camera Error";
 
     }
+
 }
 
 startCamera();
 
 
-function detectLoop(){
+function detect(){
 
-    if(video.readyState !== 4){
-        requestAnimationFrame(detectLoop);
+    if(!video.videoWidth){
+        setTimeout(detect,500);
         return;
     }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
+    // mirror webcam
     ctx.save();
     ctx.scale(-1,1);
     ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
@@ -65,25 +71,27 @@ function detectLoop(){
     const x = canvas.width/2 - boxSize/2;
     const y = canvas.height/2 - boxSize/2;
 
-    ctx.strokeStyle="black";
-    ctx.lineWidth=4;
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
-    const roiCanvas=document.createElement("canvas");
-    roiCanvas.width=boxSize;
-    roiCanvas.height=boxSize;
+    // crop ROI
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = boxSize;
+    tempCanvas.height = boxSize;
 
-    const roiCtx=roiCanvas.getContext("2d");
-    roiCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
+    const tempCtx = tempCanvas.getContext("2d");
+    tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    const resizeCanvas=document.createElement("canvas");
-    resizeCanvas.width=128;
-    resizeCanvas.height=128;
+    // resize for model
+    const resizeCanvas = document.createElement("canvas");
+    resizeCanvas.width = 128;
+    resizeCanvas.height = 128;
 
-    const resizeCtx=resizeCanvas.getContext("2d");
-    resizeCtx.drawImage(roiCanvas,0,0,128,128);
+    const resizeCtx = resizeCanvas.getContext("2d");
+    resizeCtx.drawImage(tempCanvas,0,0,128,128);
 
-    const image=resizeCanvas.toDataURL("image/jpeg");
+    const image = resizeCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
@@ -94,13 +102,14 @@ function detectLoop(){
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText=data.prediction;
+        result.innerText = data.prediction;
     })
     .catch(()=>{
         result.innerText="Prediction Error";
     });
 
-    setTimeout(detectLoop,800);
+    setTimeout(detect,800);
+
 }
 
 </script>
