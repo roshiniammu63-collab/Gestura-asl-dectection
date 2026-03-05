@@ -23,7 +23,7 @@ async function startCamera(){
     try{
 
         const stream = await navigator.mediaDevices.getUserMedia({
-            video:{ facingMode:"user" },
+            video:true,
             audio:false
         });
 
@@ -31,21 +31,24 @@ async function startCamera(){
 
         video.onloadedmetadata = ()=>{
             video.play();
-            detect();
         };
 
     }catch(err){
-
         console.error(err);
-        result.innerText = "Camera Error";
-
+        result.innerText="Camera Error";
     }
 }
 
 startCamera();
 
 
+// run detection every 800ms
+setInterval(detect,800);
+
+
 function detect(){
+
+    if(!video.videoWidth) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -62,27 +65,27 @@ function detect(){
     const y = canvas.height/2 - boxSize/2;
 
     // draw ROI box
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 4;
+    ctx.strokeStyle="black";
+    ctx.lineWidth=4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
     // crop ROI
-    const tempCanvas = document.createElement("canvas");
-    tempCanvas.width = boxSize;
-    tempCanvas.height = boxSize;
+    const tempCanvas=document.createElement("canvas");
+    tempCanvas.width=boxSize;
+    tempCanvas.height=boxSize;
 
-    const tempCtx = tempCanvas.getContext("2d");
+    const tempCtx=tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    // resize ROI to model size
-    const resizeCanvas = document.createElement("canvas");
-    resizeCanvas.width = 128;
-    resizeCanvas.height = 128;
+    // resize to model size
+    const resizeCanvas=document.createElement("canvas");
+    resizeCanvas.width=128;
+    resizeCanvas.height=128;
 
-    const resizeCtx = resizeCanvas.getContext("2d");
+    const resizeCtx=resizeCanvas.getContext("2d");
     resizeCtx.drawImage(tempCanvas,0,0,128,128);
 
-    const image = resizeCanvas.toDataURL("image/jpeg");
+    const image=resizeCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
@@ -93,13 +96,12 @@ function detect(){
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText = data.prediction;
+        result.innerText=data.prediction;
     })
     .catch(()=>{
         result.innerText="Prediction Error";
     });
 
-    requestAnimationFrame(detect);
 }
 
 </script>
