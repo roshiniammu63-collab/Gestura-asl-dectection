@@ -33,6 +33,10 @@ def home():
 def live():
     return render_template("live.html")
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
 
 @app.route("/predict", methods=["POST"])
 def predict():

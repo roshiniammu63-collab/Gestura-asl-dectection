@@ -3,12 +3,14 @@
 
 <h1 style="text-align:center;">Live Sign Detection</h1>
 
-<div style="text-align:center;">
-    <video id="video" width="500" height="350" autoplay></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+<div style="display:flex; justify-content:center;">
+    <canvas id="canvas" style="border:4px solid black; border-radius:20px;"></canvas>
+    <video id="video" autoplay playsinline style="display:none;"></video>
 </div>
 
-<h2 style="text-align:center;">Prediction: <span id="result">Waiting...</span></h2>
+<h2 style="text-align:center;">
+Prediction: <span id="result">Waiting...</span>
+</h2>
 
 <script>
 
@@ -17,59 +19,75 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const result = document.getElementById("result");
 
-navigator.mediaDevices.getUserMedia({video:true})
+navigator.mediaDevices.getUserMedia({ video:true })
 .then(stream=>{
     video.srcObject = stream;
 })
 .catch(err=>{
-    result.innerText = "Camera error";
+    result.innerText="Camera Error";
 });
 
+video.addEventListener("loadeddata", ()=>{
+    detect();
+});
 
-function predictFrame(){
+function detect(){
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    ctx.drawImage(video,0,0);
+    // mirror webcam
+    ctx.save();
+    ctx.scale(-1,1);
+    ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
+    ctx.restore();
 
-    // ROI coordinates
-    let x = canvas.width/2 - 100;
-    let y = canvas.height/2 - 100;
-    let size = 200;
+    // ROI BOX SIZE (large for hand focus)
+    const boxSize = 250;
+
+    const x = canvas.width/2 - boxSize/2;
+    const y = canvas.height/2 - boxSize/2;
 
     // draw black ROI box
-    ctx.strokeStyle = "black";
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x,y,size,size);
+    ctx.strokeStyle="black";
+    ctx.lineWidth=4;
+    ctx.strokeRect(x,y,boxSize,boxSize);
 
     // crop ROI
-    let imageData = ctx.getImageData(x,y,size,size);
+    const tempCanvas=document.createElement("canvas");
+    tempCanvas.width=boxSize;
+    tempCanvas.height=boxSize;
 
-    let tempCanvas = document.createElement("canvas");
-    tempCanvas.width = size;
-    tempCanvas.height = size;
+    const tempCtx=tempCanvas.getContext("2d");
+    tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    let tempCtx = tempCanvas.getContext("2d");
-    tempCtx.putImageData(imageData,0,0);
+    // resize ROI → model size
+    const resizeCanvas=document.createElement("canvas");
+    resizeCanvas.width=128;
+    resizeCanvas.height=128;
 
-    let dataURL = tempCanvas.toDataURL("image/jpeg");
+    const resizeCtx=resizeCanvas.getContext("2d");
+    resizeCtx.drawImage(tempCanvas,0,0,128,128);
+
+    const image=resizeCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
         headers:{
             "Content-Type":"application/json"
         },
-        body:JSON.stringify({image:dataURL})
+        body:JSON.stringify({image:image})
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText = data.prediction;
+        result.innerText=data.prediction;
+    })
+    .catch(()=>{
+        result.innerText="Error";
     });
 
+    setTimeout(detect,500);
 }
-
-setInterval(predictFrame,1000);
 
 </script>
 
