@@ -19,71 +19,69 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const result = document.getElementById("result");
 
+let stream = null;
+
 async function startCamera(){
     try{
 
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
             video:true,
             audio:false
         });
 
         video.srcObject = stream;
+        await video.play();
 
-        video.onloadedmetadata = ()=>{
-            video.play();
-        };
+        result.innerText = "Detecting...";
+        detectLoop();
 
     }catch(err){
+
         console.error(err);
-        result.innerText="Camera Error";
+        result.innerText = "Camera Permission Denied";
+
     }
 }
 
 startCamera();
 
 
-// run detection every 800ms
-setInterval(detect,800);
+function detectLoop(){
 
-
-function detect(){
-
-    if(!video.videoWidth) return;
+    if(video.readyState !== 4){
+        requestAnimationFrame(detectLoop);
+        return;
+    }
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // mirror camera
     ctx.save();
     ctx.scale(-1,1);
     ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
     ctx.restore();
 
     const boxSize = 250;
-
     const x = canvas.width/2 - boxSize/2;
     const y = canvas.height/2 - boxSize/2;
 
-    // draw ROI box
     ctx.strokeStyle="black";
     ctx.lineWidth=4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
-    // crop ROI
-    const tempCanvas=document.createElement("canvas");
-    tempCanvas.width=boxSize;
-    tempCanvas.height=boxSize;
+    const roiCanvas=document.createElement("canvas");
+    roiCanvas.width=boxSize;
+    roiCanvas.height=boxSize;
 
-    const tempCtx=tempCanvas.getContext("2d");
-    tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
+    const roiCtx=roiCanvas.getContext("2d");
+    roiCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
-    // resize to model size
     const resizeCanvas=document.createElement("canvas");
     resizeCanvas.width=128;
     resizeCanvas.height=128;
 
     const resizeCtx=resizeCanvas.getContext("2d");
-    resizeCtx.drawImage(tempCanvas,0,0,128,128);
+    resizeCtx.drawImage(roiCanvas,0,0,128,128);
 
     const image=resizeCanvas.toDataURL("image/jpeg");
 
@@ -102,6 +100,7 @@ function detect(){
         result.innerText="Prediction Error";
     });
 
+    setTimeout(detectLoop,800);
 }
 
 </script>
