@@ -13,7 +13,7 @@ model = None
 def get_model():
     global model
     if model is None:
-        model = load_model("asl_model_final.keras", compile=False)
+        model = load_model("asl_model_final.keras", compile=False, safe_mode=False)
     return model
 
 
