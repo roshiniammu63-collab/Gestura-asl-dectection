@@ -7,7 +7,6 @@ import os
 
 app = Flask(__name__)
 
-# Load model lazily
 model = None
 
 def get_model():
@@ -16,40 +15,60 @@ def get_model():
         model = load_model("asl_model_final.keras", compile=False)
     return model
 
-# Alphabet labels
+
 labels = [
 "A","B","C","D","E","F","G","H","I","J",
 "K","L","M","N","O","P","Q","R","S","T",
 "U","V","W","X","Y","Z","nothing"
 ]
 
+
+# HOME PAGE
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return render_template("home.html")
 
+
+# LIVE CAMERA PAGE
 @app.route("/live")
 def live():
     return render_template("live.html")
 
+
+# ABOUT PAGE
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
+# MODEL PREDICTION API
 @app.route("/predict", methods=["POST"])
 def predict():
-    data = request.json["image"]
 
-    encoded = data.split(",")[1]
-    img_bytes = base64.b64decode(encoded)
+    try:
 
-    np_arr = np.frombuffer(img_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        data = request.json["image"]
 
-    img = cv2.resize(img, (128,128))
-    img = img / 255.0
-    img = np.expand_dims(img, axis=0)
+        encoded = data.split(",")[1]
+        img_bytes = base64.b64decode(encoded)
 
-    prediction = get_model().predict(img)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    label = labels[np.argmax(prediction)]
+        img = cv2.resize(img, (128,128))
+        img = img / 255.0
+        img = np.expand_dims(img, axis=0)
 
-    return jsonify({"prediction": label})
+        prediction = get_model().predict(img)
+
+        label = labels[np.argmax(prediction)]
+
+        return jsonify({"prediction": label})
+
+    except Exception as e:
+        print("Prediction error:", e)
+        return jsonify({"prediction": "Error"})
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT",10000))
