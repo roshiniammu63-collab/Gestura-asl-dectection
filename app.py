@@ -59,8 +59,6 @@ def predict():
         img = img.astype("float32") / 255.0
         img = np.expand_dims(img, axis=0)
 
-        print("Image shape:", img.shape)
-
         prediction = get_model().predict(img)
 
         label = labels[np.argmax(prediction)]
