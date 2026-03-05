@@ -13,7 +13,7 @@ model = None
 def get_model():
     global model
     if model is None:
-        model = load_model("asl_model_final.keras", compile=False, safe_mode=False)
+        model = load_model("asl_model_final.keras", compile=False)
     return model
 
 
@@ -51,8 +51,11 @@ def predict():
 
         img = cv2.resize(img,(128,128))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = img.astype("float32") / 255.0
-        img = np.expand_dims(img,axis=0)
+
+        img = img / 255.0
+        img = np.array(img, dtype=np.float32)
+
+        img = np.expand_dims(img, axis=0)
 
         prediction = get_model().predict(img, verbose=0)
         label = labels[int(np.argmax(prediction))]
@@ -60,8 +63,8 @@ def predict():
         return jsonify({"prediction": label})
 
     except Exception as e:
-        print("Prediction error:", e)
-    return jsonify({"prediction": "Error"})
+        print("Prediction error:", str(e))
+        return jsonify({"prediction": "Error"})
     
 
 if __name__ == "__main__":
