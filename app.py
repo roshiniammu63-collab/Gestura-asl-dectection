@@ -50,6 +50,7 @@ def predict():
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         img = cv2.resize(img,(128,128))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = img.astype("float32") / 255.0
         img = np.expand_dims(img,axis=0)
 
