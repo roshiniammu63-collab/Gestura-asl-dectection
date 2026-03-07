@@ -30,12 +30,12 @@ async function startCamera(){
 
         video.srcObject = stream;
 
-        // START ONLY AFTER VIDEO LOADS
-        video.onloadeddata = () => {
+        video.onloadedmetadata = () => {
 
-            result.innerText = "Waiting...";
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
             detect();
-
         };
 
     }catch(err){
@@ -52,12 +52,12 @@ startCamera();
 
 function detect(){
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
     ctx.save();
+
+    // mirror video
     ctx.scale(-1,1);
     ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
+
     ctx.restore();
 
     const boxSize = 250;
@@ -65,10 +65,12 @@ function detect(){
     const x = canvas.width/2 - boxSize/2;
     const y = canvas.height/2 - boxSize/2;
 
+    // ROI box
     ctx.strokeStyle="black";
     ctx.lineWidth=4;
     ctx.strokeRect(x,y,boxSize,boxSize);
 
+    // crop ROI
     const tempCanvas=document.createElement("canvas");
     tempCanvas.width=boxSize;
     tempCanvas.height=boxSize;
@@ -76,6 +78,7 @@ function detect(){
     const tempCtx=tempCanvas.getContext("2d");
     tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
 
+    // resize to model size
     const resizeCanvas=document.createElement("canvas");
     resizeCanvas.width=128;
     resizeCanvas.height=128;
@@ -100,7 +103,7 @@ function detect(){
         result.innerText="Prediction Error";
     });
 
-    setTimeout(detect,800);
+    setTimeout(detect,500);
 
 }
 

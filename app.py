@@ -41,29 +41,41 @@ def about():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        data = request.json["image"]
 
-        encoded = data.split(",")[1]
+        data = request.get_json()
+
+        if "image" not in data:
+            return jsonify({"prediction": "No Image"})
+
+        image_data = data["image"]
+
+        encoded = image_data.split(",")[1]
         img_bytes = base64.b64decode(encoded)
 
         np_arr = np.frombuffer(img_bytes, np.uint8)
+
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return jsonify({"prediction": "Frame Error"})
 
         img = cv2.resize(img,(128,128))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        img = img / 255.0
-        img = np.array(img, dtype=np.float32)
+        img = img.astype("float32") / 255.0
 
         img = np.expand_dims(img, axis=0)
 
-        prediction = get_model().predict(img, verbose=0)
+        model = get_model()
+
+        prediction = model.predict(img, verbose=0)
+
         label = labels[int(np.argmax(prediction))]
 
         return jsonify({"prediction": label})
 
     except Exception as e:
-        print("Prediction error:", str(e))
+        print("Prediction error:", e)
         return jsonify({"prediction": "Error"})
     
 
