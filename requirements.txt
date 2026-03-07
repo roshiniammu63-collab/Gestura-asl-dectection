@@ -2,5 +2,4 @@ flask
 gunicorn
 numpy==1.24.3
 opencv-python-headless
-pillow
 tensorflow==2.13.0

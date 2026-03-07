@@ -1,9 +1,12 @@
+import os
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
+
 from flask import Flask, render_template, request, jsonify
 import numpy as np
 import base64
 import cv2
 import os
-from keras.models import load_model
+from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
 
