@@ -19,74 +19,63 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const result = document.getElementById("result");
 
+canvas.width = 640;
+canvas.height = 480;
+
 async function startCamera(){
-
     try{
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video:true,
-            audio:false
-        });
-
+        const stream = await navigator.mediaDevices.getUserMedia({video:true});
         video.srcObject = stream;
 
         video.onloadedmetadata = () => {
-
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            detect();
+            video.play();
+            requestAnimationFrame(loop);
         };
 
     }catch(err){
-
-        console.error(err);
-        result.innerText = "Camera Error";
-
+        console.error("Camera error:",err);
     }
-
 }
 
-startCamera();
-
-
-function detect(){
+let predictions = [];
+function loop(){
 
     ctx.save();
+ctx.scale(-1,1);
+ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
+ctx.restore();
 
-    // mirror video
-    ctx.scale(-1,1);
-    ctx.drawImage(video,-canvas.width,0,canvas.width,canvas.height);
+// BLACK ROI BOX
+ctx.strokeStyle = "black";
+ctx.lineWidth = 4;
 
-    ctx.restore();
+const boxWidth = 300;
+const boxHeight = 300;
 
-    const boxSize = 250;
+const x = canvas.width/2 - boxWidth/2;
+const y = canvas.height/2 - boxHeight/2;
 
-    const x = canvas.width/2 - boxSize/2;
-    const y = canvas.height/2 - boxSize/2;
+// draw ROI box
+ctx.strokeRect(x, y, boxWidth, boxHeight);
 
-    // ROI box
-    ctx.strokeStyle="black";
-    ctx.lineWidth=4;
-    ctx.strokeRect(x,y,boxSize,boxSize);
+// crop ROI
+const roiCanvas = document.createElement("canvas");
+roiCanvas.width = boxWidth;
+roiCanvas.height = boxHeight;
 
-    // crop ROI
-    const tempCanvas=document.createElement("canvas");
-    tempCanvas.width=boxSize;
-    tempCanvas.height=boxSize;
+const roiCtx = roiCanvas.getContext("2d");
+roiCtx.drawImage(canvas, x, y, boxWidth, boxHeight, 0, 0, boxWidth, boxHeight);
 
-    const tempCtx=tempCanvas.getContext("2d");
-    tempCtx.drawImage(canvas,x,y,boxSize,boxSize,0,0,boxSize,boxSize);
+// resize ROI to model input size
+const resizedCanvas = document.createElement("canvas");
+resizedCanvas.width = 128;
+resizedCanvas.height = 128;
 
-    // resize to model size
-    const resizeCanvas=document.createElement("canvas");
-    resizeCanvas.width=128;
-    resizeCanvas.height=128;
+const resizedCtx = resizedCanvas.getContext("2d");
+resizedCtx.drawImage(roiCanvas, 0, 0, 128, 128);
 
-    const resizeCtx=resizeCanvas.getContext("2d");
-    resizeCtx.drawImage(tempCanvas,0,0,128,128);
-
-    const image=resizeCanvas.toDataURL("image/jpeg");
+// convert to image
+const image = resizedCanvas.toDataURL("image/jpeg");
 
     fetch("/predict",{
         method:"POST",
@@ -97,15 +86,31 @@ function detect(){
     })
     .then(res=>res.json())
     .then(data=>{
-        result.innerText=data.prediction;
+        predictions.push(data.prediction);
+
+if(predictions.length > 10){
+    predictions.shift();
+}
+
+let counts = {};
+predictions.forEach(p => {
+    counts[p] = (counts[p] || 0) + 1;
+});
+
+let finalPrediction = Object.keys(counts).reduce((a,b)=>
+    counts[a] > counts[b] ? a : b
+);
+
+result.innerText = finalPrediction;
     })
     .catch(()=>{
-        result.innerText="Prediction Error";
+        result.innerText="Error";
     });
 
-    setTimeout(detect,500);
-
+    setTimeout(loop,300);
 }
+
+startCamera();
 
 </script>
 

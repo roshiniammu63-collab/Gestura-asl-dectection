@@ -1,12 +1,9 @@
-import os
-os.environ["TF_USE_LEGACY_KERAS"] = "1"
-
 from flask import Flask, render_template, request, jsonify
 import numpy as np
 import base64
 import cv2
 import os
-from tensorflow.keras.models import load_model
+from keras.models import load_model
 
 app = Flask(__name__)
 
@@ -16,14 +13,14 @@ model = None
 def get_model():
     global model
     if model is None:
-        model = load_model("asl_model_final.keras", compile=False)
+        model = load_model("asl_model_tf.h5", compile=False)
     return model
 
 
 labels = [
 "A","B","C","D","E","F","G","H","I","J",
 "K","L","M","N","O","P","Q","R","S","T",
-"U","V","W","X","Y","Z","nothing"
+"U","V","W","X","Y","Z","del","nothing","space"
 ]
 
 
@@ -62,24 +59,43 @@ def predict():
         if img is None:
             return jsonify({"prediction": "Frame Error"})
 
-        img = cv2.resize(img,(128,128))
+        # resize to model input
+        img = cv2.resize(img, (128,128))
+
+        # resize to model input
+        img = cv2.resize(img, (128,128))
+
+        # ensure only 3 channels
+        if img.shape[-1] == 4:
+         img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+
+        # convert to RGB
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+        # smooth noise (improves prediction stability)
+        img = cv2.GaussianBlur(img,(5,5),0)
+
+        # normalize
         img = img.astype("float32") / 255.0
 
+        # expand dimension for model
         img = np.expand_dims(img, axis=0)
 
         model = get_model()
 
         prediction = model.predict(img, verbose=0)
+        
+        print("Image shape:", img.shape)
 
         label = labels[int(np.argmax(prediction))]
 
         return jsonify({"prediction": label})
 
     except Exception as e:
-        print("Prediction error:", e)
-        return jsonify({"prediction": "Error"})
+     print("Prediction error:", e)
+    import traceback
+    traceback.print_exc()
+    return jsonify({"prediction": "Error"})
     
 
 if __name__ == "__main__":
